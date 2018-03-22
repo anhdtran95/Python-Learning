@@ -141,7 +141,7 @@ def main():
         b = innerBlock()
         
 
-        
+        #to create the border
         heightToFill = 0
         
         while heightToFill <= gameplay_height:
@@ -167,7 +167,7 @@ def main():
 
             heightToFill += 40
 
-
+        #listening to event
 
         for event in pg.event.get():
             if event.type == pg.KEYDOWN:
@@ -183,6 +183,8 @@ def main():
         else:
             trayLeft = mousePos[0] - 200
 
+        
+        #draw the tray
         gameSurface.blit(traySurface, (trayLeft, trayTop))
 
         traySurface.fill(darkred)
