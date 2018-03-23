@@ -13,6 +13,8 @@ darkgreen = (0, 180, 0)
 blue = (0, 0, 255)
 darkblue = (0, 0, 180)
 
+shitcolor = (204, 204, 0)
+
 #width and heigh for window is almost always 800* 600
 display_width = 800
 display_height = 600
@@ -28,8 +30,8 @@ class block(pg.sprite.Sprite):
         self.top = top
         self.image = pg.Surface((20,20))
         self.inside = pg.Surface((18,18))
-        self.image.fill(darkgray)
-        self.inside.fill(gray)
+        self.image.fill(gray)
+        self.inside.fill(shitcolor)
         self.image.blit(self.inside, (1,1))
         self.rect = self.image.get_rect(topleft = (self.left, self.top))
     def update(self, dir):
@@ -61,16 +63,20 @@ class mouse(pg.sprite.Sprite):
         # self.rect = self.image.get_rect(topleft = (top,left))
     def update(self, dir):
         if dir == 'left':
-            self.left -= 20
+            if self.left >= 20:
+                self.left -= 20
 
-        elif dir == 'right':           
-            self.left += 20
+        elif dir == 'right':
+            if self.left < 580:           
+                self.left += 20
             
         elif dir == 'up':
-            self.top -= 20
+            if self.top >= 20:
+                self.top -= 20
 
         elif dir == 'down':
-            self.top += 20
+            if self.top < 580:
+                self.top += 20
     def getPos(self):
         return(self.left,self.top)
 
@@ -107,11 +113,15 @@ def main():
 
     
     gameOver = False
-    pg.display.set_caption('Game by Anh')
+    pg.display.set_caption('Rodent Revenge by Anh')
     windowSurface = pg.display.set_mode((display_width, display_height))
     gameSurface = pg.Surface((gamedisplay_width, gamedisplay_height))
 
     blockGroup = pg.sprite.Group()
+    blockPosList = []
+    directionLockList = []
+    # look something like ( left coordinate and down: (240, down) means at 240 from left u cant go down
+    # or (left, 220) means at 220 from top u cant go left
 
     newMouse = mouse(280, 280)
 
@@ -123,6 +133,7 @@ def main():
             if not (blockTop == 280 and blockLeft == 280):
                 newBlock = block(blockLeft, blockTop)
                 blockGroup.add(newBlock)
+                blockPosList.append(((blockLeft, blockTop)))
             blockTop += 20
         blockLeft += 20
 
@@ -131,8 +142,10 @@ def main():
 
         windowSurface.blit(gameSurface, (0,0))
 
-        gameSurface.fill(green)
+        gameSurface.fill(darkred)
 
+
+        blockToMove = None        
 
 
         for event in pg.event.get():
@@ -143,25 +156,91 @@ def main():
                 if event.key == pg.K_UP:
                     newMouse.update('up')
                     for blocks in blockGroup:
-                        if blocks.getPos()[0] == newMouse.getPos()[0] and blocks.getPos()[1] <= newMouse.getPos()[1]: #directly above mouse
-                            # print(blocks.getPos())
-                            blocks.update('up')
-                            # print(blocks.getPos())
+                        if blocks.getPos() == newMouse.getPos(): #directly above mouse
+                            if (blocks.getPos()[0], 'up') not in directionLockList:
+                                blockToMove = blocks
+                                blockPosList.remove(blocks.getPos())
+                                blockToMove.update('up')
+                                break
+                            else:
+                                newMouse.update('down')
+
+                    if blockToMove:
+                        while blockToMove.getPos() in blockPosList:
+                        
+                            #print(blockToMove.getPos())
+                            blockToMove.update('up')
+                    
+                        blockPosList.append(blockToMove.getPos())
+                        if blockToMove.getPos()[1] == 0:
+                            directionLockList.append((blockToMove.getPos()[0], 'up')) 
+
+                        
                 if event.key == pg.K_DOWN:
                     newMouse.update('down')
                     for blocks in blockGroup:
-                        if blocks.getPos()[0] == newMouse.getPos()[0] and blocks.getPos()[1] >= newMouse.getPos()[1]: #directly below mouse
-                            blocks.update('down')
+                        if blocks.getPos() == newMouse.getPos(): #directly above mouse
+                            if (blocks.getPos()[0], 'down') not in directionLockList:
+                                blockToMove = blocks
+                                blockPosList.remove(blocks.getPos())
+                                blockToMove.update('down')
+                                break
+                            else:
+                                newMouse.update('up')
+
+                    if blockToMove:
+                        while blockToMove.getPos() in blockPosList:
+                        
+                            #print(blockToMove.getPos())
+                            blockToMove.update('down')
+                    
+                        blockPosList.append(blockToMove.getPos())
+                        if blockToMove.getPos()[1] == 580:
+                            directionLockList.append((blockToMove.getPos()[0], 'down')) 
+
                 if event.key == pg.K_LEFT:
                     newMouse.update('left')
                     for blocks in blockGroup:
-                        if blocks.getPos()[1] == newMouse.getPos()[1]  and blocks.getPos()[0] <= newMouse.getPos()[0]: #to the left of mouse
-                            blocks.update('left')
+                        if blocks.getPos() == newMouse.getPos(): #directly above mouse
+                            if ('left', blocks.getPos()[1]) not in directionLockList:
+                                blockToMove = blocks
+                                blockPosList.remove(blocks.getPos())
+                                blockToMove.update('left')
+                                break
+                            else:
+                                newMouse.update('right')
+
+                    if blockToMove:
+                        while blockToMove.getPos() in blockPosList:
+                        
+                            #print(blockToMove.getPos())
+                            blockToMove.update('left')
+                    
+                        blockPosList.append(blockToMove.getPos())
+                        if blockToMove.getPos()[0] == 0:
+                            directionLockList.append(('left', blocks.getPos()[1])) 
+
                 if event.key == pg.K_RIGHT:
                     newMouse.update('right')
                     for blocks in blockGroup:
-                        if blocks.getPos()[1] == newMouse.getPos()[1] and blocks.getPos()[0] >= newMouse.getPos()[0]: #to the right of mouse
-                            blocks.update('right')
+                        if blocks.getPos() == newMouse.getPos(): #directly above mouse
+                            if ('right', blocks.getPos()[1]) not in directionLockList:
+                                blockToMove = blocks
+                                blockPosList.remove(blocks.getPos())
+                                blockToMove.update('right')
+                                break
+                            else:
+                                newMouse.update('left')
+
+                    if blockToMove:
+                        while blockToMove.getPos() in blockPosList:
+                        
+                            #print(blockToMove.getPos())
+                            blockToMove.update('right')
+                    
+                        blockPosList.append(blockToMove.getPos())
+                        if blockToMove.getPos()[0] == 580:
+                            directionLockList.append(('right', blocks.getPos()[1])) 
                 if event.key == pg.K_a:
                     for shit in blockGroup:
                         print(shit.getPos())
