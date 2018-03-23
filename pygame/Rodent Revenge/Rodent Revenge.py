@@ -90,18 +90,23 @@ class cat(pg.sprite.Sprite):
         self.image = pg.image.load("Cat.png").convert()
         self.image = pg.transform.scale(self.image, (20, 20))
         # self.rect = self.image.get_rect(topleft = (top,left))
+
     def update(self, dir):
         if dir == 'left':
-            self.left -= 20
+            if self.left >= 20:
+                self.left -= 20
 
-        elif dir == 'right':           
-            self.left += 20
+        elif dir == 'right':
+            if self.left < 580:           
+                self.left += 20
             
         elif dir == 'up':
-            self.top -= 20
+            if self.top >= 20:
+                self.top -= 20
 
         elif dir == 'down':
-            self.top += 20
+            if self.top < 580:
+                self.top += 20
             
     def getPos(self):
         return(self.left,self.top)
@@ -124,6 +129,9 @@ def main():
     # or (left, 220) means at 220 from top u cant go left
 
     newMouse = mouse(280, 280)
+
+    catLeft = random.randint()
+    newCat = cat()
 
     #loop to create square of blocks outside
     blockLeft = 100
@@ -153,6 +161,8 @@ def main():
                 if event.key == pg.K_x:#press x always quit the game
                     gameOver = True
                     break
+
+                #move up
                 if event.key == pg.K_UP:
                     newMouse.update('up')
                     for blocks in blockGroup:
@@ -175,7 +185,7 @@ def main():
                         if blockToMove.getPos()[1] == 0:
                             directionLockList.append((blockToMove.getPos()[0], 'up')) 
 
-                        
+                #move down      
                 if event.key == pg.K_DOWN:
                     newMouse.update('down')
                     for blocks in blockGroup:
@@ -198,6 +208,7 @@ def main():
                         if blockToMove.getPos()[1] == 580:
                             directionLockList.append((blockToMove.getPos()[0], 'down')) 
 
+                #move left
                 if event.key == pg.K_LEFT:
                     newMouse.update('left')
                     for blocks in blockGroup:
@@ -220,6 +231,7 @@ def main():
                         if blockToMove.getPos()[0] == 0:
                             directionLockList.append(('left', blocks.getPos()[1])) 
 
+                #move right
                 if event.key == pg.K_RIGHT:
                     newMouse.update('right')
                     for blocks in blockGroup:

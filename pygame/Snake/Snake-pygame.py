@@ -30,7 +30,7 @@ class fruit(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
         self.object = pygame.Rect(self.left, self.top, objectWidth, objectHeight)
 
-    def update(self):
+    def update(self):#write a condition so that fruit will never be on the body of snake
         self.left = random.randint(0, display_width/10) * 10
         self.top = random.randint(0, display_height/10) * 10
         self.object = pygame.Rect(self.left, self.top, objectWidth, objectHeight)
@@ -172,6 +172,8 @@ def main():
         if(sH.getPos() == f.getPos()):
             sC.update()#update score
             f.update()#update fruit
+            while f.getPos() in posList:# this is to make sure fruit will never be in snake body
+                f.update()
             print("fruit is at: " + str(f.getPos())) 
             
         else:

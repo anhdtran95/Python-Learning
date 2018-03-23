@@ -198,6 +198,8 @@ def main():
         if (sH.getPos() == f.getPos()):
             sC.update()  #update score
             f.update()  #update fruit
+            while f.getPos() in posList:# to make sure fruit will never be on snake
+                f.update()
             print("fruit is at: " + str(f.getPos()))
 
         else:
