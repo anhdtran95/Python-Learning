@@ -7,11 +7,11 @@ white = (255, 255, 255)
 gray = (105, 105, 105)
 darkgray = (55, 55, 55)
 red = (255, 0, 0)
-darkred = (180, 0, 0)
+darkred = (105, 0, 0)
 green = (0, 255, 0)
-darkgreen = (0, 180, 0)
+darkgreen = (0, 105, 0)
 blue = (0, 0, 255)
-darkblue = (0, 0, 180)
+darkblue = (0, 0, 105)
 
 shitcolor = (204, 204, 0)
 
@@ -31,7 +31,7 @@ class block(pg.sprite.Sprite):
         self.image = pg.Surface((20,20))
         self.inside = pg.Surface((18,18))
         self.image.fill(gray)
-        self.inside.fill(shitcolor)
+        self.inside.fill(darkgreen)
         self.image.blit(self.inside, (1,1))
         self.rect = self.image.get_rect(topleft = (self.left, self.top))
     def update(self, dir):
@@ -51,7 +51,21 @@ class block(pg.sprite.Sprite):
 
     def getPos(self):
         return(self.left,self.top)
+
+class staticBlock(pg.sprite.Sprite):
+    def __init__(self, left, top):
+        pg.sprite.Sprite.__init__(self)
+        self.left = left
+        self.top = top
     
+    def getPos(self):
+        return(self.left,self.top)
+
+class cheese(staticBlock):
+    def __init__(self, left, top):
+        super(cheese, self).__init__(left, top)
+        self.image = pg.image.load("Cheese.png")
+        self.image = pg.transform.scale(self.image, (20, 20))
 
 class mouse(pg.sprite.Sprite):
     def __init__(self, left, top):
@@ -87,31 +101,72 @@ class cat(pg.sprite.Sprite):
         pg.sprite.Sprite.__init__(self)
         self.left = left
         self.top = top
-        self.image = pg.image.load("Cat.png").convert()
+        self.image = pg.image.load("Cat.png")
         self.image = pg.transform.scale(self.image, (20, 20))
+        self.moving = True
         # self.rect = self.image.get_rect(topleft = (top,left))
 
     def update(self, dir):
-        if dir == 'left':
+        # dir now is a number for easy random
+        # 0 = left, 1 = lefttop, 2 = top, 3 = topright, 
+        # 4 = right, 5 = rightdown, 6= down, 7 = downleft
+        if dir == 0:
             if self.left >= 20:
                 self.left -= 20
 
-        elif dir == 'right':
+        elif dir == 1:
+            if self.left >= 20 and self.top >= 20:           
+                self.left -= 20
+                self.top -= 20
+            
+        elif dir == 2:
+            if self.top >= 20:
+                self.top -= 20
+            
+        elif dir == 3:
+            if self.left < 580 and self.top >= 20:           
+                self.left += 20
+                self.top -= 20
+            
+        elif dir == 4:
             if self.left < 580:           
                 self.left += 20
             
-        elif dir == 'up':
-            if self.top >= 20:
-                self.top -= 20
-
-        elif dir == 'down':
+        elif dir == 5:
+            if self.left < 580 and self.top < 580:           
+                self.left += 20
+                self.top += 20
+            
+        elif dir == 6:
             if self.top < 580:
+                self.top += 20
+
+        elif dir == 7:
+            if self.left >= 20 and self.top < 580:
+                self.left -= 20
                 self.top += 20
             
     def getPos(self):
         return(self.left,self.top)
+    
+    def stop(self):
+        self.moving = False
+
+    def isMoving(self):
+        return self.moving
 
 
+def opp(dir):#return the opposite direction lol
+    if dir < 4:
+        return (dir + 4)
+    else:
+        return (dir - 4)
+
+def searchForBlock(leftVal, topVal, group):
+    for elem in group:
+        if elem.getPos() == (leftVal, topVal):
+            return True
+    return False
 
 def main():
     pg.init()
@@ -130,8 +185,21 @@ def main():
 
     newMouse = mouse(280, 280)
 
-    catLeft = random.randint()
-    newCat = cat()
+    catLeft = random.randint(0, gamedisplay_width/20) * 20
+    if catLeft >= 100 and catLeft <= 500:
+        catTop = random.randint(0, 9)
+        if catTop < 5:
+            catTop = catTop * 20
+        else:
+            catTop = catTop * 20 + 400
+    else:
+        catTop = random.randint(0, gamedisplay_height/20) * 20
+        
+    newCat = cat(catLeft, catTop)
+    catUpdateTimer = 200
+    catUpdateTick = 0
+
+    newCheese = None
 
     #loop to create square of blocks outside
     blockLeft = 100
@@ -150,11 +218,12 @@ def main():
 
         windowSurface.blit(gameSurface, (0,0))
 
-        gameSurface.fill(darkred)
+        gameSurface.fill(blue)
 
 
         blockToMove = None        
 
+        failedDir = []
 
         for event in pg.event.get():
             if event.type == pg.KEYDOWN:
@@ -164,103 +233,187 @@ def main():
 
                 #move up
                 if event.key == pg.K_UP:
-                    newMouse.update('up')
-                    for blocks in blockGroup:
-                        if blocks.getPos() == newMouse.getPos(): #directly above mouse
-                            if (blocks.getPos()[0], 'up') not in directionLockList:
-                                blockToMove = blocks
-                                blockPosList.remove(blocks.getPos())
-                                blockToMove.update('up')
-                                break
-                            else:
-                                newMouse.update('down')
+                    #if theres a hole in the column up then push 
+                    mouseLeft, mouseTop = newMouse.getPos()
+                    while mouseTop >= 0:
+                        mouseTop -= 20
+                        found = searchForBlock(mouseLeft, mouseTop, blockGroup)
 
-                    if blockToMove:
-                        while blockToMove.getPos() in blockPosList:
+                        if not found:
+                            break
+
+                    if mouseTop >= 0:
                         
-                            #print(blockToMove.getPos())
-                            blockToMove.update('up')
-                    
-                        blockPosList.append(blockToMove.getPos())
-                        if blockToMove.getPos()[1] == 0:
-                            directionLockList.append((blockToMove.getPos()[0], 'up')) 
+                        if not found:#there is an empty block upward of mouse
+                            newMouse.update('up')
+                            for blocks in blockGroup:
+                                if blocks.getPos() == newMouse.getPos(): #directly above mouse
+                                    blockToMove = blocks
+                                    blockPosList.remove(blocks.getPos())
+                                    blockToMove.update('up')
+                                    break
+                            if blockToMove:
+                                while blockToMove.getPos() != (mouseLeft, mouseTop):
+                                    blockToMove.update('up')
+                                blockPosList.append(blockToMove.getPos())
 
                 #move down      
                 if event.key == pg.K_DOWN:
-                    newMouse.update('down')
-                    for blocks in blockGroup:
-                        if blocks.getPos() == newMouse.getPos(): #directly above mouse
-                            if (blocks.getPos()[0], 'down') not in directionLockList:
-                                blockToMove = blocks
-                                blockPosList.remove(blocks.getPos())
-                                blockToMove.update('down')
-                                break
-                            else:
-                                newMouse.update('up')
+                    mouseLeft, mouseTop = newMouse.getPos()
+                    while mouseTop <= 580:
+                        mouseTop += 20
+                        found = searchForBlock(mouseLeft, mouseTop, blockGroup)
 
-                    if blockToMove:
-                        while blockToMove.getPos() in blockPosList:
+                        if not found:
+                            break
+
+                    if mouseTop <= 580:
                         
-                            #print(blockToMove.getPos())
-                            blockToMove.update('down')
-                    
-                        blockPosList.append(blockToMove.getPos())
-                        if blockToMove.getPos()[1] == 580:
-                            directionLockList.append((blockToMove.getPos()[0], 'down')) 
+                        if not found:#there is an empty block upward of mouse
+                            newMouse.update('down')
+                            for blocks in blockGroup:
+                                if blocks.getPos() == newMouse.getPos(): #directly above mouse
+                                    blockToMove = blocks
+                                    blockPosList.remove(blocks.getPos())
+                                    blockToMove.update('down')
+                                    break
+                            if blockToMove:
+                                while blockToMove.getPos() != (mouseLeft, mouseTop):
+                                    blockToMove.update('down')
+                                blockPosList.append(blockToMove.getPos())
 
                 #move left
                 if event.key == pg.K_LEFT:
-                    newMouse.update('left')
-                    for blocks in blockGroup:
-                        if blocks.getPos() == newMouse.getPos(): #directly above mouse
-                            if ('left', blocks.getPos()[1]) not in directionLockList:
-                                blockToMove = blocks
-                                blockPosList.remove(blocks.getPos())
-                                blockToMove.update('left')
-                                break
-                            else:
-                                newMouse.update('right')
+                    mouseLeft, mouseTop = newMouse.getPos()
+                    while mouseLeft >= 0:
+                        mouseLeft -= 20
+                        found = searchForBlock(mouseLeft, mouseTop, blockGroup)
 
-                    if blockToMove:
-                        while blockToMove.getPos() in blockPosList:
+                        if not found:
+                            break
+
+                    if mouseLeft >= 0:
                         
-                            #print(blockToMove.getPos())
-                            blockToMove.update('left')
-                    
-                        blockPosList.append(blockToMove.getPos())
-                        if blockToMove.getPos()[0] == 0:
-                            directionLockList.append(('left', blocks.getPos()[1])) 
+                        if not found:#there is an empty block upward of mouse
+                            newMouse.update('left')
+                            for blocks in blockGroup:
+                                if blocks.getPos() == newMouse.getPos(): #directly above mouse
+                                    blockToMove = blocks
+                                    blockPosList.remove(blocks.getPos())
+                                    blockToMove.update('left')
+                                    break
+                            if blockToMove:
+                                while blockToMove.getPos() != (mouseLeft, mouseTop):
+                                    blockToMove.update('left')
+                                blockPosList.append(blockToMove.getPos())
 
                 #move right
                 if event.key == pg.K_RIGHT:
-                    newMouse.update('right')
-                    for blocks in blockGroup:
-                        if blocks.getPos() == newMouse.getPos(): #directly above mouse
-                            if ('right', blocks.getPos()[1]) not in directionLockList:
-                                blockToMove = blocks
-                                blockPosList.remove(blocks.getPos())
-                                blockToMove.update('right')
-                                break
-                            else:
-                                newMouse.update('left')
+                    mouseLeft, mouseTop = newMouse.getPos()
+                    while mouseLeft <= 580:
+                        mouseLeft += 20
+                        found = searchForBlock(mouseLeft, mouseTop, blockGroup)
 
-                    if blockToMove:
-                        while blockToMove.getPos() in blockPosList:
+                        if not found:
+                            break
+
+                    if mouseLeft <= 580:
                         
-                            #print(blockToMove.getPos())
-                            blockToMove.update('right')
-                    
-                        blockPosList.append(blockToMove.getPos())
-                        if blockToMove.getPos()[0] == 580:
-                            directionLockList.append(('right', blocks.getPos()[1])) 
-                if event.key == pg.K_a:
-                    for shit in blockGroup:
-                        print(shit.getPos())
+                        if not found:#there is an empty block upward of mouse
+                            newMouse.update('right')
+                            for blocks in blockGroup:
+                                if blocks.getPos() == newMouse.getPos(): #directly above mouse
+                                    blockToMove = blocks
+                                    blockPosList.remove(blocks.getPos())
+                                    blockToMove.update('right')
+                                    break
+                            if blockToMove:
+                                while blockToMove.getPos() != (mouseLeft, mouseTop):
+                                    blockToMove.update('right')
+                                blockPosList.append(blockToMove.getPos())
 
+                #press a to debug all the block position
+                if event.key == pg.K_a:
+                    for shit in blockPosList:
+                        print(shit)
+                        print(newCheese.getPos())
         
+
+        if catUpdateTick == catUpdateTimer:
+            
+            if newCat.isMoving():
+                
+                prevPos = newCat.getPos()
+                catDir = random.randint(0,7)
+
+                newCat.update(catDir)
+
+              
+                while newCat.getPos() in blockPosList or newCat.getPos() == prevPos:
+                    
+                    
+
+                    print("")
+
+                    failedDir.append(catDir)#append to the list of failure
+
+                    if newCat.getPos() in blockPosList:
+                        newCat.update(opp(catDir))#go back to previous
+
+                    if failedDir.count(catDir) >= 2:
+                        # print("cat is trapped")
+                        # print("trapped at: " + str(newCat.getPos()))
+                        
+                        # newCat.update(opp(catDir))#go back to previous
+                        newCat.stop()
+                        newCheese = cheese(newCat.getPos()[0],newCat.getPos()[1] )
+
+                        # newCat.kill()
+                        newCat = None #because now is only 1 cat
+
+                        break 
+
+
+                    prevPos = newCat.getPos()
+                    print("before update at: " + str(prevPos))
+                    catDir += 1
+                    catDir = catDir % 8
+                    
+                    # 0 = left, 1 = lefttop, 2 = top, 3 = topright, 
+                    # 4 = right, 5 = rightdown, 6= down, 7 = downleft
+
+                    if catDir == 0:
+                        print("moving left")
+                    elif catDir == 1:
+                        print("moving up and left")
+                    elif catDir == 2:
+                        print("moving up")
+                    elif catDir == 3:
+                        print("moving up and right")
+                    elif catDir == 4:
+                        print("moving right")
+                    elif catDir == 5:
+                        print("moving right and down")
+                    elif catDir == 6:
+                        print("moving down")
+                    elif catDir == 7:
+                        print("moving down and left")
+                  
+                    newCat.update(catDir)
+                    print("after update at: " + str(newCat.getPos()))
+                        
+            catUpdateTick = 0
+        catUpdateTick += 1
+            
 
         blockGroup.draw(gameSurface)
         gameSurface.blit(newMouse.image, newMouse.getPos())
+
+        if newCat:
+            gameSurface.blit(newCat.image, newCat.getPos())
+
+        if newCheese:
+            gameSurface.blit(newCheese.image, newCheese.getPos())
         
 
         pg.display.update()
