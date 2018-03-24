@@ -1,5 +1,6 @@
 import pygame as pg 
 import random
+import math
 
 #define some color
 black = (0, 0, 0)
@@ -23,6 +24,10 @@ display_height = 600
 gamedisplay_width = 600
 gamedisplay_height = 600
 
+#score display
+scoredisplay_width = 200
+scoredisplay_height = 600
+
 class block(pg.sprite.Sprite):
     def __init__(self, left, top):
         pg.sprite.Sprite.__init__(self)
@@ -34,19 +39,16 @@ class block(pg.sprite.Sprite):
         self.inside.fill(darkgreen)
         self.image.blit(self.inside, (1,1))
         self.rect = self.image.get_rect(topleft = (self.left, self.top))
+
     def update(self, dir):
         if dir == 'left':
             self.left -= 20
-
         elif dir == 'right':           
             self.left += 20
-            
         elif dir == 'up':
             self.top -= 20
-
         elif dir == 'down':
             self.top += 20
-        
         self.rect = self.image.get_rect(topleft = (self.left, self.top))
 
     def getPos(self):
@@ -152,12 +154,34 @@ class cat(pg.sprite.Sprite):
     def getPos(self):
         return(self.left,self.top)
     
-    def stop(self):
+    def pause(self):
         self.moving = False
 
-    def isMoving(self):
-        return self.moving
+    def move(self):
+        self.moving = True
 
+    def isMoving(self):
+        return self.moving 
+    
+    def getDist(self, mousePos):
+        mouseLeft = mousePos[0]
+        mouseTop = mousePos[1]
+        leftDist = math.pow(abs(mouseLeft - self.left), 2)
+        topDist = math.pow(abs(mouseTop - self.top), 2)
+        dist = math.sqrt(leftDist + topDist)
+        return dist
+
+class scoreSection(pg.sprite.Sprite):
+    
+    def __init__(self):
+        pg.sprite.Sprite.__init__(self)
+        self.score = 0
+        self.font = pg.font.SysFont('Comic Sans MS', 30)
+        self.image = self.font.render("Score: " + str(self.score), False, white)
+
+    def update(self):
+        self.score += 10
+        self.image = self.font.render("Score: " + str(self.score), False, white)
 
 def opp(dir):#return the opposite direction lol
     if dir < 4:
@@ -165,11 +189,26 @@ def opp(dir):#return the opposite direction lol
     else:
         return (dir - 4)
 
-def searchForBlock(leftVal, topVal, group):
+def searchForBlock(posTuple, group):
     for elem in group:
-        if elem.getPos() == (leftVal, topVal):
+        if elem.getPos() == posTuple:
             return True
     return False
+
+def countPausing(group):# count the number of cats paused in a group of cat
+    count = 0
+    for elem in group:
+        if not elem.isMoving():
+            count += 1
+
+    return count
+
+def removeSprite(posTuple, group):
+    for elem in group:
+        if elem.getPos() == posTuple:
+            elem.kill()
+            break
+
 
 def main():
     pg.init()
@@ -179,6 +218,7 @@ def main():
     pg.display.set_caption('Rodent Revenge by Anh')
     windowSurface = pg.display.set_mode((display_width, display_height))
     gameSurface = pg.Surface((gamedisplay_width, gamedisplay_height))
+    scoreSurface = pg.Surface((scoredisplay_width, scoredisplay_height))
 
     #store all blocks
     blockGroup = pg.sprite.Group()
@@ -190,17 +230,15 @@ def main():
     numOfCat = 1
     catNo = 0
     
+    catUpdateTimer = 200
+    catUpdateTick = 0
     #store all chesse
     cheeseGroup = pg.sprite.Group()
     cheesePosList = []
 
     newMouse = mouse(280, 280)
 
-    
-    catUpdateTimer = 200
-    catUpdateTick = 0
-
-    newCheese = None
+    score = scoreSection()
 
     #loop to create square of blocks outside
     blockLeft = 100
@@ -218,7 +256,9 @@ def main():
     while not gameOver:
         windowSurface.fill(black)
         windowSurface.blit(gameSurface, (0,0))
+        windowSurface.blit(scoreSurface, (600,0))
         gameSurface.fill(blue)
+        scoreSurface.fill(darkred)
 
         blockToMove = None   
 
@@ -226,24 +266,17 @@ def main():
         failedDir = []
 
         #loop to make different cats
-        #change this loop because different blocks are moved 
-        #so you cant generate new position using this loop
-        while catNo < numOfCat and numOfCat < 4: #4 cats at a time fella
+        while catNo < numOfCat and numOfCat <= 5: #5 cats at a time fella
             catLeft = random.randint(0, gamedisplay_width/20) * 20
-            if catLeft >= 100 and catLeft <= 500:
-                catTop = random.randint(0, 9)
-                if catTop < 5:
-                    catTop = catTop * 20
-                else:
-                    catTop = catTop * 20 + 400
-            else:
-                catTop = random.randint(0, gamedisplay_height/20) * 20
+            catTop = random.randint(0, gamedisplay_height/20) * 20
 
+            while (catLeft, catTop) in blockPosList or (catLeft, catTop) in cheesePosList or (catLeft, catTop) in catPosList or (catLeft, catTop) == newMouse.getPos():
+                catTop = random.randint(0, gamedisplay_height/20) * 20 #change one only la
+            
             newCat = cat(catLeft, catTop)
             catPosList.append((catLeft, catTop))
             catGroup.add(newCat)
             catNo += 1
-            print("initial Pos is: " + str((catLeft, catTop)))
 
         for event in pg.event.get():
             if event.type == pg.KEYDOWN:
@@ -257,13 +290,13 @@ def main():
                     mouseLeft, mouseTop = newMouse.getPos()
                     while mouseTop >= 0:
                         mouseTop -= 20
-                        found = searchForBlock(mouseLeft, mouseTop, blockGroup)
-
-                        if not found:
+                        found = searchForBlock((mouseLeft, mouseTop), blockGroup)
+                        if not found:#when not found means it meets something halfway
                             break
+                    if (mouseLeft, mouseTop) in catPosList or (mouseLeft, mouseTop) in cheesePosList:
+                        found = True
 
-                    if mouseTop >= 0:
-                        
+                    if mouseTop >= 0:                        
                         if not found:
                             newMouse.update('up')
                             for blocks in blockGroup:
@@ -282,13 +315,13 @@ def main():
                     mouseLeft, mouseTop = newMouse.getPos()
                     while mouseTop <= 580:
                         mouseTop += 20
-                        found = searchForBlock(mouseLeft, mouseTop, blockGroup)
-
+                        found = searchForBlock((mouseLeft, mouseTop), blockGroup)
                         if not found:
                             break
+                    if (mouseLeft, mouseTop) in catPosList or (mouseLeft, mouseTop) in cheesePosList:
+                        found = True
 
                     if mouseTop <= 580:
-                        
                         if not found:
                             newMouse.update('down')
                             for blocks in blockGroup:
@@ -307,13 +340,13 @@ def main():
                     mouseLeft, mouseTop = newMouse.getPos()
                     while mouseLeft >= 0:
                         mouseLeft -= 20
-                        found = searchForBlock(mouseLeft, mouseTop, blockGroup)
-
+                        found = searchForBlock((mouseLeft, mouseTop), blockGroup)
                         if not found:
                             break
+                    if (mouseLeft, mouseTop) in catPosList or (mouseLeft, mouseTop) in cheesePosList:
+                        found = True
 
                     if mouseLeft >= 0:
-                        
                         if not found:
                             newMouse.update('left')
                             for blocks in blockGroup:
@@ -332,13 +365,13 @@ def main():
                     mouseLeft, mouseTop = newMouse.getPos()
                     while mouseLeft <= 580:
                         mouseLeft += 20
-                        found = searchForBlock(mouseLeft, mouseTop, blockGroup)
-
+                        found = searchForBlock((mouseLeft, mouseTop), blockGroup)
                         if not found:
                             break
-
-                    if mouseLeft <= 580:
+                    if (mouseLeft, mouseTop) in catPosList or (mouseLeft, mouseTop) in cheesePosList:
+                        found = True
                         
+                    if mouseLeft <= 580:
                         if not found:
                             newMouse.update('right')
                             for blocks in blockGroup:
@@ -354,20 +387,51 @@ def main():
 
                 #press a to debug all the block position
                 if event.key == pg.K_a:
-                    # for shit in blockPosList:
-                    #     print(shit)
+
+                    print("cat group has: " + str(len(catGroup)))
+                    for shit in catPosList:
+                        print("them cats at: " + str(shit))
                     
                     for shit in cheesePosList:
-                        print(shit)
+                        print("them cheese at: " + str(shit))
         
 
         if catUpdateTick == catUpdateTimer:
             for cats in catGroup:
-                failedDir = []
-                if cats.isMoving():
+                failedDir = []#this is for absolute nono direction
                 
-                    initialPos = cats.getPos()
+                initialPos = cats.getPos()
+                if cats.getDist(newMouse.getPos()) <= 60: #if near mouse
+                    # print("Danger is near hahaha")
+                    wrongDir = []#this is for not desired direction
+                    prevDist = cats.getDist(newMouse.getPos())
                     prevPos = cats.getPos()
+                    catDir = random.randint(0,7)
+                    cats.update(catDir)
+                    
+                    while len(failedDir) < 9:
+
+                        if cats.getPos() in blockPosList or cats.getPos() == prevPos or cats.getDist(newMouse.getPos()) > prevDist:
+                            if cats.getPos() != prevPos:
+                                if cats.getDist(newMouse.getPos()) > prevDist and cats.getPos() not in blockPosList:
+                                    wrongDir.append(catDir)
+                                cats.update(opp(catDir))
+                            failedDir.append(catDir)
+                            catDir += 1
+                            catDir %= 8
+                            cats.update(catDir)
+                        else:
+                            break
+
+                    if cats.getPos() in blockPosList or cats.getPos() == prevPos:
+                        if cats.getPos() in blockPosList:
+                            cats.update(opp(catDir))
+                        for dir in wrongDir:
+                            cats.update(dir)
+                            break
+
+                else:
+                    prevPos = initialPos
                     catDir = random.randint(0,7)
                     cats.update(catDir)
 
@@ -378,41 +442,47 @@ def main():
                             cats.update(opp(catDir))#go back to previous
 
                         if failedDir.count(catDir) >= 2:
-                            cats.stop()
-
-                            print("current catdir is: " + str(catDir))
-                            for dir in failedDir:
-                                print(dir)
-                            
-
+                            # cats.pause()
                             break 
 
                         prevPos = cats.getPos()
                         catDir += 1
-                        catDir = catDir % 8
+                        catDir %= 8
                         cats.update(catDir)
                     
-                    catPosList.remove(initialPos)
-                    catPosList.append(cats.getPos())
+                catPosList.remove(initialPos)
+                catPosList.append(cats.getPos())  
 
-                    # print("pos before: " + str(cats.getPos()))
-                    # print("pos after: " + str(initialPos))
-                    
+                if cats.getPos() != initialPos:# after cat can accidentally escape, it will move again
+                    cats.move()
                 else:
-                    # print("this cat ain moving")
+                    cats.pause()       
+
+                
+
+            if countPausing(catGroup) ==  len(catGroup):
+                for cats in catGroup:
                     newCheese = cheese(cats.getPos()[0],cats.getPos()[1])
                     cheeseGroup.add(newCheese)
                     cheesePosList.append(cats.getPos())
                     cats.kill()
-                    
-                    # newCat = None #because now is only 1 cat
-                
-                if len(catGroup) == 0:
-                    catNo = 0
-                    numOfCat += 1
-                        
+                    catPosList.remove(cats.getPos())
+
+                catNo = 0
+                numOfCat += 1
+
             catUpdateTick = 0
         catUpdateTick += 1
+
+
+        if newMouse.getPos() in cheesePosList:
+            score.update()
+            removeSprite(newMouse.getPos(), cheeseGroup)
+            cheesePosList.remove(newMouse.getPos())
+
+        if newMouse.getPos() in catPosList:
+            # gameOver = True
+            print("CAT IS EATING MOUSE")
             
 
         blockGroup.draw(gameSurface)
@@ -420,7 +490,7 @@ def main():
         cheeseGroup.draw(gameSurface)
         
         gameSurface.blit(newMouse.image, newMouse.getPos())
-
+        scoreSurface.blit(score.image, (0,0))#update score text
         pg.display.update()
 
 
