@@ -66,6 +66,7 @@ class cheese(staticBlock):
         super(cheese, self).__init__(left, top)
         self.image = pg.image.load("Cheese.png")
         self.image = pg.transform.scale(self.image, (20, 20))
+        self.rect = self.image.get_rect(topleft = (left,top))
 
 class mouse(pg.sprite.Sprite):
     def __init__(self, left, top):
@@ -104,7 +105,7 @@ class cat(pg.sprite.Sprite):
         self.image = pg.image.load("Cat.png")
         self.image = pg.transform.scale(self.image, (20, 20))
         self.moving = True
-        # self.rect = self.image.get_rect(topleft = (top,left))
+        self.rect = self.image.get_rect(topleft = (self.left, self.top))
 
     def update(self, dir):
         # dir now is a number for easy random
@@ -145,6 +146,8 @@ class cat(pg.sprite.Sprite):
             if self.left >= 20 and self.top < 580:
                 self.left -= 20
                 self.top += 20
+        
+        self.rect = self.image.get_rect(topleft = (self.left,self.top))
             
     def getPos(self):
         return(self.left,self.top)
@@ -177,25 +180,23 @@ def main():
     windowSurface = pg.display.set_mode((display_width, display_height))
     gameSurface = pg.Surface((gamedisplay_width, gamedisplay_height))
 
+    #store all blocks
     blockGroup = pg.sprite.Group()
     blockPosList = []
-    directionLockList = []
-    # look something like ( left coordinate and down: (240, down) means at 240 from left u cant go down
-    # or (left, 220) means at 220 from top u cant go left
+
+    #store all cats
+    catGroup = pg.sprite.Group()
+    catPosList = []
+    numOfCat = 1
+    catNo = 0
+    
+    #store all chesse
+    cheeseGroup = pg.sprite.Group()
+    cheesePosList = []
 
     newMouse = mouse(280, 280)
 
-    catLeft = random.randint(0, gamedisplay_width/20) * 20
-    if catLeft >= 100 and catLeft <= 500:
-        catTop = random.randint(0, 9)
-        if catTop < 5:
-            catTop = catTop * 20
-        else:
-            catTop = catTop * 20 + 400
-    else:
-        catTop = random.randint(0, gamedisplay_height/20) * 20
-        
-    newCat = cat(catLeft, catTop)
+    
     catUpdateTimer = 200
     catUpdateTick = 0
 
@@ -213,17 +214,36 @@ def main():
             blockTop += 20
         blockLeft += 20
 
+    #official game loop starts here
     while not gameOver:
         windowSurface.fill(black)
-
         windowSurface.blit(gameSurface, (0,0))
-
         gameSurface.fill(blue)
 
+        blockToMove = None   
 
-        blockToMove = None        
-
+        #cat failed direction list     
         failedDir = []
+
+        #loop to make different cats
+        #change this loop because different blocks are moved 
+        #so you cant generate new position using this loop
+        while catNo < numOfCat and numOfCat < 4: #4 cats at a time fella
+            catLeft = random.randint(0, gamedisplay_width/20) * 20
+            if catLeft >= 100 and catLeft <= 500:
+                catTop = random.randint(0, 9)
+                if catTop < 5:
+                    catTop = catTop * 20
+                else:
+                    catTop = catTop * 20 + 400
+            else:
+                catTop = random.randint(0, gamedisplay_height/20) * 20
+
+            newCat = cat(catLeft, catTop)
+            catPosList.append((catLeft, catTop))
+            catGroup.add(newCat)
+            catNo += 1
+            print("initial Pos is: " + str((catLeft, catTop)))
 
         for event in pg.event.get():
             if event.type == pg.KEYDOWN:
@@ -244,10 +264,10 @@ def main():
 
                     if mouseTop >= 0:
                         
-                        if not found:#there is an empty block upward of mouse
+                        if not found:
                             newMouse.update('up')
                             for blocks in blockGroup:
-                                if blocks.getPos() == newMouse.getPos(): #directly above mouse
+                                if blocks.getPos() == newMouse.getPos():
                                     blockToMove = blocks
                                     blockPosList.remove(blocks.getPos())
                                     blockToMove.update('up')
@@ -269,10 +289,10 @@ def main():
 
                     if mouseTop <= 580:
                         
-                        if not found:#there is an empty block upward of mouse
+                        if not found:
                             newMouse.update('down')
                             for blocks in blockGroup:
-                                if blocks.getPos() == newMouse.getPos(): #directly above mouse
+                                if blocks.getPos() == newMouse.getPos():
                                     blockToMove = blocks
                                     blockPosList.remove(blocks.getPos())
                                     blockToMove.update('down')
@@ -294,10 +314,10 @@ def main():
 
                     if mouseLeft >= 0:
                         
-                        if not found:#there is an empty block upward of mouse
+                        if not found:
                             newMouse.update('left')
                             for blocks in blockGroup:
-                                if blocks.getPos() == newMouse.getPos(): #directly above mouse
+                                if blocks.getPos() == newMouse.getPos(): 
                                     blockToMove = blocks
                                     blockPosList.remove(blocks.getPos())
                                     blockToMove.update('left')
@@ -319,10 +339,10 @@ def main():
 
                     if mouseLeft <= 580:
                         
-                        if not found:#there is an empty block upward of mouse
+                        if not found:
                             newMouse.update('right')
                             for blocks in blockGroup:
-                                if blocks.getPos() == newMouse.getPos(): #directly above mouse
+                                if blocks.getPos() == newMouse.getPos(): 
                                     blockToMove = blocks
                                     blockPosList.remove(blocks.getPos())
                                     blockToMove.update('right')
@@ -334,87 +354,72 @@ def main():
 
                 #press a to debug all the block position
                 if event.key == pg.K_a:
-                    for shit in blockPosList:
+                    # for shit in blockPosList:
+                    #     print(shit)
+                    
+                    for shit in cheesePosList:
                         print(shit)
-                        print(newCheese.getPos())
         
 
         if catUpdateTick == catUpdateTimer:
-            
-            if newCat.isMoving():
+            for cats in catGroup:
+                failedDir = []
+                if cats.isMoving():
                 
-                prevPos = newCat.getPos()
-                catDir = random.randint(0,7)
+                    initialPos = cats.getPos()
+                    prevPos = cats.getPos()
+                    catDir = random.randint(0,7)
+                    cats.update(catDir)
 
-                newCat.update(catDir)
+                    while cats.getPos() in blockPosList or cats.getPos() == prevPos:
+                        failedDir.append(catDir)#append to the list of failure
 
-              
-                while newCat.getPos() in blockPosList or newCat.getPos() == prevPos:
+                        if cats.getPos() in blockPosList:
+                            cats.update(opp(catDir))#go back to previous
+
+                        if failedDir.count(catDir) >= 2:
+                            cats.stop()
+
+                            print("current catdir is: " + str(catDir))
+                            for dir in failedDir:
+                                print(dir)
+                            
+
+                            break 
+
+                        prevPos = cats.getPos()
+                        catDir += 1
+                        catDir = catDir % 8
+                        cats.update(catDir)
                     
+                    catPosList.remove(initialPos)
+                    catPosList.append(cats.getPos())
+
+                    # print("pos before: " + str(cats.getPos()))
+                    # print("pos after: " + str(initialPos))
                     
-
-                    print("")
-
-                    failedDir.append(catDir)#append to the list of failure
-
-                    if newCat.getPos() in blockPosList:
-                        newCat.update(opp(catDir))#go back to previous
-
-                    if failedDir.count(catDir) >= 2:
-                        # print("cat is trapped")
-                        # print("trapped at: " + str(newCat.getPos()))
-                        
-                        # newCat.update(opp(catDir))#go back to previous
-                        newCat.stop()
-                        newCheese = cheese(newCat.getPos()[0],newCat.getPos()[1] )
-
-                        # newCat.kill()
-                        newCat = None #because now is only 1 cat
-
-                        break 
-
-
-                    prevPos = newCat.getPos()
-                    print("before update at: " + str(prevPos))
-                    catDir += 1
-                    catDir = catDir % 8
+                else:
+                    # print("this cat ain moving")
+                    newCheese = cheese(cats.getPos()[0],cats.getPos()[1])
+                    cheeseGroup.add(newCheese)
+                    cheesePosList.append(cats.getPos())
+                    cats.kill()
                     
-                    # 0 = left, 1 = lefttop, 2 = top, 3 = topright, 
-                    # 4 = right, 5 = rightdown, 6= down, 7 = downleft
-
-                    if catDir == 0:
-                        print("moving left")
-                    elif catDir == 1:
-                        print("moving up and left")
-                    elif catDir == 2:
-                        print("moving up")
-                    elif catDir == 3:
-                        print("moving up and right")
-                    elif catDir == 4:
-                        print("moving right")
-                    elif catDir == 5:
-                        print("moving right and down")
-                    elif catDir == 6:
-                        print("moving down")
-                    elif catDir == 7:
-                        print("moving down and left")
-                  
-                    newCat.update(catDir)
-                    print("after update at: " + str(newCat.getPos()))
+                    # newCat = None #because now is only 1 cat
+                
+                if len(catGroup) == 0:
+                    catNo = 0
+                    numOfCat += 1
                         
             catUpdateTick = 0
         catUpdateTick += 1
             
 
         blockGroup.draw(gameSurface)
-        gameSurface.blit(newMouse.image, newMouse.getPos())
-
-        if newCat:
-            gameSurface.blit(newCat.image, newCat.getPos())
-
-        if newCheese:
-            gameSurface.blit(newCheese.image, newCheese.getPos())
+        catGroup.draw(gameSurface)
+        cheeseGroup.draw(gameSurface)
         
+        gameSurface.blit(newMouse.image, newMouse.getPos())
 
         pg.display.update()
 
