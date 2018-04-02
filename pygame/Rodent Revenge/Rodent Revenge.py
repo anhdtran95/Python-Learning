@@ -293,7 +293,7 @@ def main():
                         found = searchForBlock((mouseLeft, mouseTop), blockGroup)
                         if not found:#when not found means it meets something halfway
                             break
-                    if (mouseLeft, mouseTop) in catPosList or (mouseLeft, mouseTop) in cheesePosList:
+                    if (mouseLeft, mouseTop) in catPosList: #you might push the cheese to death
                         found = True
 
                     if mouseTop >= 0:                        
@@ -318,7 +318,7 @@ def main():
                         found = searchForBlock((mouseLeft, mouseTop), blockGroup)
                         if not found:
                             break
-                    if (mouseLeft, mouseTop) in catPosList or (mouseLeft, mouseTop) in cheesePosList:
+                    if (mouseLeft, mouseTop) in catPosList:
                         found = True
 
                     if mouseTop <= 580:
@@ -343,7 +343,7 @@ def main():
                         found = searchForBlock((mouseLeft, mouseTop), blockGroup)
                         if not found:
                             break
-                    if (mouseLeft, mouseTop) in catPosList or (mouseLeft, mouseTop) in cheesePosList:
+                    if (mouseLeft, mouseTop) in catPosList:
                         found = True
 
                     if mouseLeft >= 0:
@@ -368,9 +368,9 @@ def main():
                         found = searchForBlock((mouseLeft, mouseTop), blockGroup)
                         if not found:
                             break
-                    if (mouseLeft, mouseTop) in catPosList or (mouseLeft, mouseTop) in cheesePosList:
+                    if (mouseLeft, mouseTop) in catPosList:
                         found = True
-                        
+
                     if mouseLeft <= 580:
                         if not found:
                             newMouse.update('right')
@@ -411,9 +411,9 @@ def main():
                     
                     while len(failedDir) < 9:
 
-                        if cats.getPos() in blockPosList or cats.getPos() == prevPos or cats.getDist(newMouse.getPos()) > prevDist:
+                        if cats.getPos() in blockPosList or cats.getPos() == prevPos or cats.getDist(newMouse.getPos()) >= prevDist:
                             if cats.getPos() != prevPos:
-                                if cats.getDist(newMouse.getPos()) > prevDist and cats.getPos() not in blockPosList:
+                                if cats.getDist(newMouse.getPos()) >= prevDist and cats.getPos() not in blockPosList:
                                     wrongDir.append(catDir)
                                 cats.update(opp(catDir))
                             failedDir.append(catDir)
@@ -474,6 +474,12 @@ def main():
             catUpdateTick = 0
         catUpdateTick += 1
 
+        for cheeseItem in cheeseGroup:
+            if cheeseItem.getPos() in blockPosList:
+                cheesePosList.remove(cheeseItem.getPos())
+                cheeseItem.kill()
+                
+
 
         if newMouse.getPos() in cheesePosList:
             score.update()
@@ -481,8 +487,8 @@ def main():
             cheesePosList.remove(newMouse.getPos())
 
         if newMouse.getPos() in catPosList:
-            # gameOver = True
             print("CAT IS EATING MOUSE")
+            gameOver = True
             
 
         blockGroup.draw(gameSurface)
